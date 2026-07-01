@@ -24,7 +24,7 @@ gh auth login          # le token de session est invalide, reconnexion nécessai
 gh repo create tonica --public --source=. --push
 ```
 
-Dans le repo GitHub → Settings → Pages → Source = « GitHub Actions » si ce n'est pas activé automatiquement. L'app sera dispo sur https://<utilisateur>.github.io/tonica/.
+Le workflow active GitHub Pages automatiquement (`enablement: true` sur `configure-pages`). Si l'activation échoue faute de permissions, active-le manuellement : repo GitHub → Settings → Pages → Source = « GitHub Actions ». L'app sera dispo sur https://<utilisateur>.github.io/tonica/.
 
 Les chemins d'assets sont relatifs (`base: './'` dans `vite.config.ts`), donc l'application fonctionne quel que soit le nom du dépôt.
 
