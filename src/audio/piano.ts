@@ -1,4 +1,4 @@
-import { SplendidGrandPiano } from 'smplr'
+import { CacheStorage, SplendidGrandPiano } from 'smplr'
 import type { Chord } from '../music/progression'
 import { buildChord, type Mode } from '../music/theory'
 
@@ -18,14 +18,38 @@ function getContext(): AudioContext {
   return context
 }
 
+// Nom versionné du cache des samples. La clé de cache est l'URL du sample et smplr ne
+// revalide jamais : pour forcer tous les clients à retélécharger (changement de piano,
+// de baseUrl, etc.), il suffit d'incrémenter ce numéro de version.
+const PIANO_CACHE_NAME = 'tonica-piano-v1'
+
 /** Démarre le chargement des samples. Idempotent : renvoie toujours la même promesse. */
 export function loadPiano(): Promise<void> {
   if (!ready) {
     const ctx = getContext()
-    piano = new SplendidGrandPiano(ctx)
+    // CacheStorage met les samples en cache (Cache API du navigateur) : le premier
+    // chargement passe par le réseau, les refreshs suivants lisent depuis le cache.
+    piano = new SplendidGrandPiano(ctx, { storage: new CacheStorage(PIANO_CACHE_NAME) })
+    // Nettoyage best-effort des anciennes versions du cache (évite le poids mort).
+    void purgeOldPianoCaches()
     ready = piano.load.then(() => undefined)
   }
   return ready
+}
+
+/** Supprime les caches piano d'anciennes versions (garde uniquement PIANO_CACHE_NAME). */
+async function purgeOldPianoCaches(): Promise<void> {
+  if (typeof caches === 'undefined') return
+  try {
+    const keys = await caches.keys()
+    await Promise.all(
+      keys
+        .filter((k) => k.startsWith('tonica-piano-') && k !== PIANO_CACHE_NAME)
+        .map((k) => caches.delete(k)),
+    )
+  } catch {
+    // Nettoyage non critique : on ignore toute erreur.
+  }
 }
 
 /** À appeler sur le 1er geste utilisateur pour lever le blocage autoplay du navigateur. */
