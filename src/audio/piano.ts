@@ -68,9 +68,33 @@ export async function resume(): Promise<void> {
 const NOTE_DURATION = 1.6 // secondes, un accord tenu
 const CHORD_GAP = 1.1 // secondes entre le début de deux accords d'une suite
 
+/** Rappels facultatifs pour synchroniser l'UI (surbrillance) sur la lecture audio. */
+export interface SequenceHandlers {
+  /** Appelé au moment exact où l'accord d'index `index` de la suite commence. */
+  onChordStart?: (index: number) => void
+  /** Appelé une fois toute la lecture (résolution comprise) terminée. */
+  onDone?: () => void
+}
+
+// setTimeout planifiés pour les rappels UI, annulés dès qu'une nouvelle lecture démarre
+// (évite qu'un rappel obsolète d'une lecture précédente ne déclenche une surbrillance erronée).
+let pendingTimers: ReturnType<typeof setTimeout>[] = []
+
+function clearPendingTimers(): void {
+  pendingTimers.forEach(clearTimeout)
+  pendingTimers = []
+}
+
+/** Planifie l'appel de `cb` à l'instant (horloge audio) `atTime`. */
+function scheduleCallback(atTime: number, cb: () => void): void {
+  const delayMs = Math.max(0, (atTime - getContext().currentTime) * 1000)
+  pendingTimers.push(setTimeout(cb, delayMs))
+}
+
 /** Coupe toutes les notes en cours ET planifiées (évite les lectures qui se superposent). */
 export function stopAll(): void {
   piano?.stop()
+  clearPendingTimers()
 }
 
 /** Joue un accord (notes MIDI) à un instant absolu de l'horloge audio. */
@@ -82,9 +106,11 @@ export function playChord(notes: number[], atTime: number, duration = NOTE_DURAT
 }
 
 /** Joue un accord immédiatement (léger délai pour une attaque nette). */
-export function playChordNow(notes: number[], duration = NOTE_DURATION): void {
+export function playChordNow(notes: number[], duration = NOTE_DURATION, onDone?: () => void): void {
   stopAll()
-  playChord(notes, getContext().currentTime + 0.05, duration)
+  const at = getContext().currentTime + 0.05
+  playChord(notes, at, duration)
+  if (onDone) scheduleCallback(at + duration, onDone)
 }
 
 /**
@@ -92,19 +118,32 @@ export function playChordNow(notes: number[], duration = NOTE_DURATION): void {
  * 1er accord (toujours la tonique, cf. `generateRound`) à la fin pour boucler dessus et
  * faire entendre la résolution (ex. I–IV–V devient I–IV–V–I).
  */
-function scheduleSequence(chords: Chord[], opts: { gap?: number; startAt?: number } = {}): number {
+function scheduleSequence(
+  chords: Chord[],
+  opts: { gap?: number; startAt?: number } & SequenceHandlers = {},
+): number {
   const ctx = getContext()
   const gap = opts.gap ?? CHORD_GAP
   const start = opts.startAt ?? ctx.currentTime + 0.1
   const withResolution = chords.length > 0 ? [...chords, chords[0]] : chords
   withResolution.forEach((chord, i) => {
-    playChord(chord.notes, start + i * gap)
+    const at = start + i * gap
+    playChord(chord.notes, at)
+    if (i < chords.length && opts.onChordStart) {
+      const index = i
+      scheduleCallback(at, () => opts.onChordStart!(index))
+    }
   })
-  return withResolution.length * gap
+  const totalDuration = withResolution.length * gap
+  if (opts.onDone) scheduleCallback(start + totalDuration, opts.onDone)
+  return totalDuration
 }
 
 /** Joue une suite d'accords en coupant d'abord toute lecture en cours. */
-export function playSequence(chords: Chord[], opts: { gap?: number; startAt?: number } = {}): number {
+export function playSequence(
+  chords: Chord[],
+  opts: { gap?: number; startAt?: number } & SequenceHandlers = {},
+): number {
   stopAll()
   return scheduleSequence(chords, opts)
 }
@@ -147,11 +186,12 @@ export function playRound(
   mode: Mode,
   chords: Chord[],
   reference: ReferenceMode = 'cadence',
+  handlers: SequenceHandlers = {},
 ): void {
   stopAll()
   const ctx = getContext()
   let cursor = ctx.currentTime + 0.1
   const refEnd = scheduleReference(tonicMidi, mode, reference, cursor)
   cursor = refEnd + (reference === 'none' ? 0 : 0.7) // respiration avant la suite
-  scheduleSequence(chords, { startAt: cursor })
+  scheduleSequence(chords, { startAt: cursor, ...handlers })
 }

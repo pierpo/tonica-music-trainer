@@ -68,3 +68,15 @@ export function buildChord(
 }
 
 export const DEGREE_COUNT = 7
+
+const QUALITY_SUFFIX: Record<ChordQuality, string> = { maj: '', min: 'm', dim: '°' }
+
+/**
+ * Symbole d'accord absolu pour un degré donné dans une tonalité donnée (ex. "C", "Dm", "B°").
+ * Toujours la fondamentale réelle, indépendamment d'un éventuel renversement du voicing joué.
+ */
+export function chordSymbol(tonicMidi: number, mode: Mode, degree: number): string {
+  const d = degree % 7
+  const rootPitchClass = (((tonicMidi + SCALE_INTERVALS[mode][d]) % 12) + 12) % 12
+  return NOTE_NAMES[rootPitchClass] + QUALITY_SUFFIX[DIATONIC_QUALITIES[mode][d]]
+}

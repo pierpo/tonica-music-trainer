@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildChord, noteName } from './theory'
+import { buildChord, chordSymbol, noteName } from './theory'
 
 // Do majeur : tonique = C4 (MIDI 60).
 const C4 = 60
@@ -40,5 +40,35 @@ describe('noteName', () => {
     expect(noteName(60)).toBe('C4')
     expect(noteName(69)).toBe('A4')
     expect(noteName(61)).toBe('C#4')
+  })
+})
+
+describe('chordSymbol — Do majeur', () => {
+  it('I = C, IV = F, V = G (majeurs, pas de suffixe)', () => {
+    expect(chordSymbol(C4, 'major', 0)).toBe('C')
+    expect(chordSymbol(C4, 'major', 3)).toBe('F')
+    expect(chordSymbol(C4, 'major', 4)).toBe('G')
+  })
+  it('ii = Dm, vi = Am (mineurs, suffixe m)', () => {
+    expect(chordSymbol(C4, 'major', 1)).toBe('Dm')
+    expect(chordSymbol(C4, 'major', 5)).toBe('Am')
+  })
+  it('vii° = B° (diminué, suffixe °)', () => {
+    expect(chordSymbol(C4, 'major', 6)).toBe('B°')
+  })
+})
+
+describe('chordSymbol — La mineur', () => {
+  const A3 = 57
+  it('i = Am, VI = F, ii° = B°', () => {
+    expect(chordSymbol(A3, 'minor', 0)).toBe('Am')
+    expect(chordSymbol(A3, 'minor', 5)).toBe('F')
+    expect(chordSymbol(A3, 'minor', 1)).toBe('B°')
+  })
+})
+
+describe('chordSymbol — indépendant du renversement / octave de la tonique', () => {
+  it('reste basé sur la fondamentale réelle quelle que soit l’octave de départ', () => {
+    expect(chordSymbol(C4 + 12, 'major', 3)).toBe('F')
   })
 })

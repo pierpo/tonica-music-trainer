@@ -79,6 +79,7 @@ export default function App() {
                 guesses={guesses}
                 phase={phase}
                 mode={round.mode}
+                playingIndex={game.playingIndex}
                 onReplayChord={game.replayChord}
               />
               <Controls
@@ -94,6 +95,7 @@ export default function App() {
               <DegreePad
                 level={level}
                 mode={round.mode}
+                tonicMidi={round.tonicMidi}
                 disabled={phase !== 'guessing'}
                 onPick={game.pickDegree}
               />

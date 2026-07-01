@@ -1,4 +1,4 @@
-import { ROMAN_LABELS, type Mode } from '../music/theory'
+import { chordSymbol, ROMAN_LABELS, type Mode } from '../music/theory'
 import type { Round } from '../music/progression'
 import type { Phase } from '../game/useGame'
 
@@ -7,10 +7,11 @@ interface Props {
   guesses: (number | null)[]
   phase: Phase
   mode: Mode
+  playingIndex: number | null
   onReplayChord: (index: number) => void
 }
 
-export function AnswerRow({ round, guesses, phase, mode, onReplayChord }: Props) {
+export function AnswerRow({ round, guesses, phase, mode, playingIndex, onReplayChord }: Props) {
   const labels = ROMAN_LABELS[mode]
   return (
     <div className="flex flex-wrap justify-center gap-2">
@@ -27,6 +28,9 @@ export function AnswerRow({ round, guesses, phase, mode, onReplayChord }: Props)
         } else if (guess !== null) {
           cls = 'border-indigo-500 bg-indigo-500/15 text-indigo-200'
         }
+        if (playingIndex === i) {
+          cls += ' ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900'
+        }
 
         return (
           <button
@@ -36,9 +40,19 @@ export function AnswerRow({ round, guesses, phase, mode, onReplayChord }: Props)
             title="Réécouter cet accord"
           >
             <span className="text-xs font-normal text-slate-400">#{i + 1}</span>
-            <span>{guess !== null ? labels[guess] : '—'}</span>
+            <span className="flex items-baseline gap-1">
+              <span>{guess !== null ? labels[guess] : '—'}</span>
+              {guess !== null && (
+                <span className="text-sm font-normal opacity-80">
+                  {chordSymbol(round.tonicMidi, round.mode, guess)}
+                </span>
+              )}
+            </span>
             {revealed && !correct && (
-              <span className="text-xs font-normal text-emerald-400">{labels[chord.degree]}</span>
+              <span className="flex items-baseline gap-1 text-xs font-normal text-emerald-400">
+                <span>{labels[chord.degree]}</span>
+                <span>{chordSymbol(round.tonicMidi, round.mode, chord.degree)}</span>
+              </span>
             )}
           </button>
         )

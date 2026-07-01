@@ -43,6 +43,7 @@ export function useGame() {
   const [bestStreak, setBestStreak] = useState(loadBestStreak)
   const [reference, setReferenceState] = useState<ReferenceMode>(loadReference)
   const [inversions, setInversionsState] = useState<boolean>(loadInversions)
+  const [playingIndex, setPlayingIndex] = useState<number | null>(null)
 
   // Réfs pour lire les valeurs courantes dans les callbacks sans les recréer.
   const roundRef = useRef<Round | null>(null)
@@ -61,7 +62,13 @@ export function useGame() {
     setRound(r)
     setGuesses(new Array(r.chords.length).fill(null))
     setPhase('guessing')
-    resume().then(() => playRound(r.tonicMidi, r.mode, r.chords, referenceRef.current))
+    setPlayingIndex(null)
+    resume().then(() =>
+      playRound(r.tonicMidi, r.mode, r.chords, referenceRef.current, {
+        onChordStart: setPlayingIndex,
+        onDone: () => setPlayingIndex(null),
+      }),
+    )
   }, [])
 
   const setReference = useCallback((mode: ReferenceMode) => {
@@ -136,13 +143,16 @@ export function useGame() {
       return nextStreak
     })
     setPhase('revealed')
+    setPlayingIndex(null)
   }, [guesses, phase, bestStreak])
 
   // --- Replay ---
   const replaySequence = useCallback(() => {
     const r = roundRef.current
     if (!r) return
-    resume().then(() => playSequence(r.chords))
+    resume().then(() =>
+      playSequence(r.chords, { onChordStart: setPlayingIndex, onDone: () => setPlayingIndex(null) }),
+    )
   }, [])
 
   const replayReference = useCallback(() => {
@@ -154,7 +164,10 @@ export function useGame() {
   const replayChord = useCallback((index: number) => {
     const r = roundRef.current
     if (!r || !r.chords[index]) return
-    resume().then(() => playChordNow(r.chords[index].notes))
+    setPlayingIndex(index)
+    resume().then(() =>
+      playChordNow(r.chords[index].notes, undefined, () => setPlayingIndex(null)),
+    )
   }, [])
 
   return {
@@ -168,6 +181,7 @@ export function useGame() {
     bestStreak,
     reference,
     inversions,
+    playingIndex,
     newRound,
     setLevel,
     setReference,
