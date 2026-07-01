@@ -87,15 +87,20 @@ export function playChordNow(notes: number[], duration = NOTE_DURATION): void {
   playChord(notes, getContext().currentTime + 0.05, duration)
 }
 
-/** Planifie une suite d'accords SANS couper le son en cours (usage interne). */
+/**
+ * Planifie une suite d'accords SANS couper le son en cours (usage interne). Rejoue le
+ * 1er accord (toujours la tonique, cf. `generateRound`) à la fin pour boucler dessus et
+ * faire entendre la résolution (ex. I–IV–V devient I–IV–V–I).
+ */
 function scheduleSequence(chords: Chord[], opts: { gap?: number; startAt?: number } = {}): number {
   const ctx = getContext()
   const gap = opts.gap ?? CHORD_GAP
   const start = opts.startAt ?? ctx.currentTime + 0.1
-  chords.forEach((chord, i) => {
+  const withResolution = chords.length > 0 ? [...chords, chords[0]] : chords
+  withResolution.forEach((chord, i) => {
     playChord(chord.notes, start + i * gap)
   })
-  return chords.length * gap
+  return withResolution.length * gap
 }
 
 /** Joue une suite d'accords en coupant d'abord toute lecture en cours. */
